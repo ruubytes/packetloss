@@ -35,7 +35,7 @@ interface ResultNode {
     ]
     const encoder: TextEncoder = new TextEncoder();
     const timeout: number | null = parseInt(Deno.args[0]) ?? null;
-    const totalCountedPackets: number = parseInt(Deno.args[1]) ?? 1000;
+    const totalCountedPackets: number = parseInt(Deno.args[1]) ?? 600;
     let totalPackets: number = 0;
     let failedPackets: number = 0;
     let head: ResultNode | null = null;
@@ -64,7 +64,7 @@ interface ResultNode {
       const lossRate = ((failedPackets / totalPackets) * 100).toFixed(2);
       const total = totalPackets.toString().padStart(totalCountedPackets.toString().length, '0');
       const lost = failedPackets.toString().padStart(totalCountedPackets.toString().length, '0');
-      const text = `Packetloss rate (${lost}/${total}): ${lossRate ?? 0}%`;
+      const text = `🔄 Packetloss rate (${lost}/${total}): ${lossRate ?? 0}%`;
       return await Deno.stdout.write(encoder.encode(`\r\x1b[K${text}`));
     }
   
@@ -76,8 +76,8 @@ interface ResultNode {
     const ping = async (website: Website): Promise<boolean> => {
       try {
         const cmd = Deno.build.os === "windows" 
-          ? ["ping", "-n", "1", website.url]
-          : ["ping", "-c", "1", website.url];
+          ? ["ping", "-n", "1", "-w", "1000", website.url]
+          : ["ping", "-c", "1", "-W", "1", website.url];
         website.total++;
         const { success } = await new Deno.Command(cmd[0], { args: cmd.slice(1) }).output();
         if (!success) 
@@ -125,11 +125,14 @@ interface ResultNode {
      * Prints the final statistics to the console.
      */
     const printFinalStats = () => {
-      console.log(`Websites pinged:\n${websites.map(w => `${w.url.padEnd(16, " ")}: ${w.total.toString().padStart(4, " ")} pings, ${w.failed.toString().padStart(3, " ")} failed`).join("\n")}`);
+      console.log(`\n📋 Websites pinged:\n${websites.map(w => `${w.url.padEnd(16, " ")}: ${w.total.toString().padStart(4, " ")} pings, ${w.failed.toString().padStart(3, " ")} failed`).join("\n")}`);
       const lossRate = ((failedPackets / totalPackets) * 100).toFixed(2);
       const total = totalPackets.toString().padStart(totalCountedPackets.toString().length, '0');
       const lost = failedPackets.toString().padStart(totalCountedPackets.toString().length, '0');
-      console.log(`Packetloss rate (${lost}/${total}): ${lossRate}%`);
+      if ((failedPackets / totalPackets) * 100 < 3)
+        console.log(`✅ Packetloss rate (${lost}/${total}): ${lossRate}%`);
+      else
+        console.log(`⚠️ Packetloss rate (${lost}/${total}): ${lossRate}%`);
     }
   
     const sleep = (ms: number = 1000) => new Promise(resolve => setTimeout(resolve, ms));
